@@ -1,59 +1,57 @@
 #include "pooling_core.h"
-#include <iostream>
 
 #define max(a,b) ((a>b)?a:b)
-#define min(a,b) ((a>b)?b:a)
 
-void Pooling(ap_uint<16> CHin, ap_uint<16> Hin, ap_uint<16> Win, ap_uint<8> Kx, ap_uint <8> Ky, ap_uint<2> mode, float feature_in[],float feature_out[])
+typedef ap_uint<8>  data_u8;
+typedef ap_uint<16> data_u16;
+typedef float       data_f32;
+typedef ap_uint<1>  data_bool;
+
+void Pooling(data_u16 CHin, data_u16 Hin, data_u16 Win, data_u8 K, data_bool mode, float feature_in[],float feature_out[])
 {
-	#pragma HLS INTERFACE s_axilite port=Kx
-	#pragma HLS INTERFACE s_axilite port=Ky
-	#pragma HLS INTERFACE s_axilite port=CHin
-	#pragma HLS INTERFACE s_axilite port=Hin
-	#pragma HLS INTERFACE s_axilite port=mode
-	#pragma HLS INTERFACE s_axilite port=Win
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_out
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_in
-	#pragma HLS INTERFACE s_axilite port=return
+#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_in offset=slave
+#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_out offset=slave
+#pragma HLS INTERFACE s_axilite port=return
+#pragma HLS INTERFACE s_axilite port=Win
+#pragma HLS INTERFACE s_axilite port=K
+#pragma HLS INTERFACE s_axilite port=Hin
+#pragma HLS INTERFACE s_axilite port=mode
+#pragma HLS INTERFACE s_axilite port=CHin
 
-	ap_uint<16> Hout, Wout;
-	Wout = Win / Kx;
-	Hout = Hin / Ky;
+    data_u16 pool_size = K * K; // 池化窗口大小
+    data_u16 hout = Hin / K; // 输出高度
+    data_u16 wout = Win / K; // 输出宽度
 
-	for (int c = 0; c < CHin; c++)
-	    for (int i = 0; i < Hout; i++)
-	        for (int j = 0; j < Wout; j++)
-	        {
-	            float sum;
-	            if (mode == 0) sum = 0;
-	            else if (mode == 1) sum = 99999999999999999;
-	            else sum = -99999999999999999;
+    // 遍历每个输出特征图
+    for (data_u16 c = 0; c < CHin; ++c) {
+        // 遍历每个输出像素
+        for (data_u16 oh = 0; oh < hout; ++oh) {
+            for (data_u16 ow = 0; ow < wout; ++ow) {
 
-	            for (int ii = 0; ii < Ky; ii++)
-	                for (int jj = 0; jj < Kx; jj++)
-	                {
-	                    ap_int < 16 > h = i * Ky + ii;
-	                    ap_int < 16 > w = j * Kx + jj;
-	                    switch (mode)
-	                    {
-	                        case 0:
-	                        {
-	                            sum += feature_in[h * CHin * Win + w * CHin + c]; break;
-	                        }
-	                        case 1:
-	                        {
-	                            sum = min(sum, feature_in[h * CHin * Win + w * CHin + c]); break;
-	                        }
-	                        case 2:
-	                        {
-	                            sum = max(sum, feature_in[h * CHin * Win + w * CHin + c]); break;
-	                        }
-	                        default:
-	                            break;
-	                    }
-	                }
-	            if (mode == 0)
-	                sum = sum / (Kx * Ky);
-	            feature_out[i * Wout * CHin + j * CHin + c] = sum;
-	        }
+            	data_f32 max_val = 0;
+            	if (mode == 0) max_val = -9999999;
+
+                for (data_u8 kh = 0; kh < K; ++kh) {
+                    for (data_u8 kw = 0; kw < K; ++kw) {
+
+                        data_u16 ih = oh * K + kh;
+                        data_u16 iw = ow * K + kw;
+
+                        data_f32 in_val = feature_in[ih * Win * CHin + iw * CHin + c];
+
+                        if (mode == 0) { // 最大池化
+                            max_val = max(max_val, in_val);
+                        } else { // 平均池化
+                            max_val += in_val;
+                        }
+
+                    }
+                }
+                if (mode == 1) { // 平均池化
+                    max_val /= pool_size;
+                }
+                feature_out[oh * wout * CHin + ow * CHin + c] = max_val;
+            }
+        }
+    }
 }

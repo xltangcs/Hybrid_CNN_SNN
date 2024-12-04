@@ -1,13 +1,13 @@
 #include "stdio.h"
-
+#include "time.h"
 #include "conv_core.h"
 
-#define IN_WIDTH 5
-#define IN_HEIGHT 5
+#define IN_WIDTH 28
+#define IN_HEIGHT 28
 #define IN_CH 1
 
-#define KERNEL_WIDTH 3
-#define KERNEL_HEIGHT 3
+#define KERNEL_WIDTH 5
+#define KERNEL_HEIGHT 5
 #define X_STRIDE 1
 #define Y_STRIDE 1
 
@@ -36,16 +36,20 @@ int main(void)
         for (int j = 0; j < KERNEL_WIDTH; j++)
             for (int cin = 0; cin < IN_CH; cin++)
                 for (int cout = 0; cout < OUT_CH; cout++)
-                    //W[i][j][cin][cout]=i*KERNEL_WIDTH+j;
                     W[i][j][cin][cout] = 1;
 
     for (int cout = 0; cout < OUT_CH; cout++)
         bias[cout] = 0;
 
-    Conv(IN_CH, IN_HEIGHT, IN_WIDTH, OUT_CH,
-        KERNEL_WIDTH, KERNEL_HEIGHT, X_STRIDE, Y_STRIDE, MODE, RELU_EN,
+    double start_time = clock();
+    Conv(IN_CH, OUT_CH, IN_HEIGHT, IN_WIDTH,
+        KERNEL_WIDTH, Y_STRIDE, RELU_EN, MODE,
         feature_in[0][0], W[0][0][0], bias, feature_out[0][0]
     );
+    double end_time = clock();
+    double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+
+    printf("Function execution time: %f seconds\n", time_taken);
 
     for (int i = 0; i < OUT_HEIGHT; i++)
         for (int j = 0; j < OUT_WIDTH; j++)

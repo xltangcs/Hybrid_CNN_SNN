@@ -4,6 +4,13 @@
 
 #include "ap_fixed.h"
 
-void Pooling(ap_uint<16> CHin, ap_uint<16> Hin, ap_uint<16> Win, ap_uint<8> Kx, ap_uint <8> Ky, ap_uint<2> mode, float feature_in[],float feature_out[]);
+typedef ap_uint<8>  data_u8;
+typedef ap_uint<16> data_u16;
+typedef float       data_f32;
+typedef ap_uint<1>  data_bool;
+
+void Pooling(data_u16 CHin, data_u16 Hin, data_u16 Win, data_u8 K, data_bool mode, float feature_in[],float feature_out[]);
+
+
 
 #endif

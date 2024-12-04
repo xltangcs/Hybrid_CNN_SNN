@@ -1,64 +1,60 @@
 #include "conv_core.h"
 
-void Conv(ap_uint<16> CHin, ap_uint<16> Hin, ap_uint<16> Win, ap_uint<16> CHout, ap_uint<8> Kx, ap_uint<8> Ky, ap_uint<8> Sx, ap_uint<8> Sy, ap_uint<1> pd_mode, ap_uint<1> relu_en, float feature_in[], float conv_w[], float bias[], float feature_out[])
+
+void Conv(data_u16 CHin, data_u16 CHout, data_u16 Hin, data_u16 Win, data_u8 K, data_u8 S, data_bool relu, data_u8 pd, data_f32 feature_in[], data_f32 conv_w[], data_f32 bias[], data_f32 feature_out[])
 {
-	#pragma HLS INTERFACE s_axilite port=return
-	#pragma HLS INTERFACE s_axilite port=Sy
-	#pragma HLS INTERFACE s_axilite port=Ky
-	#pragma HLS INTERFACE s_axilite port=Hin
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=conv_w
-	#pragma HLS INTERFACE s_axilite port=pd_mode
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_in
-	#pragma HLS INTERFACE s_axilite port=CHout
-	#pragma HLS INTERFACE s_axilite port=Sx
-	#pragma HLS INTERFACE s_axilite port=relu_en
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_out
-	#pragma HLS INTERFACE s_axilite port=CHin
-	#pragma HLS INTERFACE m_axi depth=4294967295 port=bias
-	#pragma HLS INTERFACE s_axilite port=Win
-	#pragma HLS INTERFACE s_axilite port=Kx
-	ap_uint<8> pad_x, pad_y;
+#pragma HLS INTERFACE m_axi depth=4294967295 port=conv_w offset=slave
+#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_out offset=slave
+#pragma HLS INTERFACE m_axi depth=4294967295 port=bias offset=slave
+#pragma HLS INTERFACE m_axi depth=4294967295 port=feature_in offset=slave
+#pragma HLS INTERFACE s_axilite port=return
+#pragma HLS INTERFACE s_axilite port=CHout
+#pragma HLS INTERFACE s_axilite port=S
+#pragma HLS INTERFACE s_axilite port=relu
+#pragma HLS INTERFACE s_axilite port=CHin
+#pragma HLS INTERFACE s_axilite port=Hin
+#pragma HLS INTERFACE s_axilite port=K
+#pragma HLS INTERFACE s_axilite port=Win
+#pragma HLS INTERFACE s_axilite port=pd
 
-	if (pd_mode)
-	{
-		pad_x = (Kx - 1) / 2;
-		pad_y = (Ky - 1) / 2;
-	}
-	else
-	{
-		pad_x = 0;
-		pad_y = 0;
-	}
 
-	ap_uint<16> Hout, Wout;
+    data_u16 Hout = (Hin + 2 * pd - K) / S + 1;
+    data_u16 Wout = (Win + 2 * pd - K) / S + 1;
 
-	Hout = (Hin + 2 * pad_y - Ky) / Sy + 1;
-	Wout = (Win + 2 * pad_x - Kx) / Sx + 1;
+    // 循环遍历输出特征图的每个点
+    for(data_u16 hout = 0; hout < Hout; ++hout)
+ {
+        for(data_u16 wout = 0; wout < Wout; ++wout) {
+            for(data_u16 chout = 0; chout < CHout; ++chout){
 
-	for (int cout = 0; cout < CHout; cout++)
-		for (int i = 0; i < Hout; i++)
-			for (int j = 0; j < Wout; j++)
-			{
-				float sum = 0;
-				for (int ii = 0; ii < Ky; ii++)
-					for (int jj = 0; jj < Kx; jj++)
-					{
-						ap_uint<16> h = i * Sy - pad_y + ii;
-						ap_uint<16> w = j * Sx - pad_x + jj;
+                data_f32 sum = bias[chout]; // 初始化为偏置值
+                // 循环遍历卷积核的每个点
+                for(data_u8 ky = 0; ky < K; ++ky) {
+                    for(data_u8 kx = 0; kx < K; ++kx) {
+                        for(data_u16 chin = 0; chin < CHin; ++chin) {
+#pragma HLS UNROLL
+                            // 计算输入特征图的坐标
+                            data_u16 h = hout * S - pd + ky;
+                            data_u16 w = wout * S - pd + kx;
 
-						if (h >= 0 && w >= 0 && h < Hin && w < Win)
-						{
-							for (int cin = 0; cin < CHin; cin++)
-							{
-								float tp = feature_in[h * CHin * Win + w * CHin + cin] * conv_w[ii * Kx * CHin * CHout + jj * CHin * CHout + cin * CHout + cout];
-								sum = sum + tp;
-							}
-						}
-					}
-				sum = sum + bias[cout];
-				if (relu_en && sum <= 0)
-					sum = 0;
-				feature_out[i * Wout * CHout + j * CHout+ cout] = sum;
-			}
+                            // 确保坐标在输入特征图范围内
+                            if(h < Hin && w < Win) {
+                                // 计算卷积和
+                                sum += feature_in[h * CHin * Win + w * CHin + chin] * conv_w[ky * K * CHin * CHout +  kx * CHin * CHout + chin * CHout + chout];
 
+                            }
+                        }
+                    }
+                }
+
+                // 应用ReLU激活函数
+                if(relu) {
+                    sum = (sum > 0) ? sum : 0;
+                }
+
+                // 写入输出特征图
+                feature_out[hout * Wout * CHout + wout * CHout+ chout] = sum;
+            }
+        }
+    }
 }
