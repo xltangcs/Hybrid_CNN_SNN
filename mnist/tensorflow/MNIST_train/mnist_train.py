@@ -11,7 +11,7 @@ import os
  
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-mnist = input_data.read_data_sets('./MNIST_data', one_hot=True)
+mnist = input_data.read_data_sets('./data', one_hot=True)
 sess = tf.InteractiveSession()
 
 def Record_Tensor(tensor,name):

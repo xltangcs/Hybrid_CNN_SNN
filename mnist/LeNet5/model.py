@@ -12,20 +12,21 @@ class LeNet5(nn.Module):
                                           nn.BatchNorm2d(16),
                                           nn.ReLU(),
                                           nn.MaxPool2d(kernel_size=2, stride=2))
-        self.fc1 = nn.Sequential(nn.Linear(4 * 4 * 16, 120),
+        self.layer3 = nn.Sequential(nn.Linear(4 * 4 * 16, 120),
                                        nn.ReLU())
-        self.fc2 = nn.Sequential(nn.Linear(120, 84),
+        self.layer4 = nn.Sequential(nn.Linear(120, 84),
                                        nn.ReLU())
-        self.fc3 = nn.Linear(84, 10)
+        self.layer5 = nn.Linear(84, 10)
+        self.flat = nn.Flatten(2)
     
     def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = out.reshape(out.size(0), -1)
-        out = self.fc1(out)
-        out = self.fc2(out)
-        out = self.fc3(out)
-        return out
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.flat(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        return x
     
 if __name__ == '__main__':
     LeNet = LeNet5()
