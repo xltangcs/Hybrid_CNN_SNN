@@ -1,0 +1,6 @@
+2024-12-11 21:03:17
+
+conv1_n = 15	conv1_Mo = 33	approx = 127, error = -0.00040307798789740445
+conv2_n = 16	conv2_Mo = 93	approx = 127, error = 0.0006947777188344162
+full3_n = 15	full3_Mo = 65	approx = 127, error = 8.569931935653585e-06
+full4_n = 15	full4_Mo = 105	approx = 127, error = -0.0009551738269095722

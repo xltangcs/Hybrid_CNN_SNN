@@ -13,10 +13,14 @@ def train(model, train_loader, optimizer, epoch):
         
         output = model(data)
         loss = F.cross_entropy(output, target)
-
+        train_loss += loss.item()
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+    
+    print('Train Epoch: {}\t Average Loss: {:.6f}'.format(
+        epoch, train_loss/len(train_loader.dataset)))
 
 def test(model, test_loader):
     model.eval()
@@ -25,10 +29,15 @@ def test(model, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
+            test_loss += F.cross_entropy(output, target, reduction='sum').item() 
             pred = output.argmax(dim=1, keepdim=True)
             test_acc += pred.eq(target.view_as(pred)).sum().item()
 
+    test_loss /= len(test_loader.dataset)
     accuracy = 100. * test_acc / len(test_loader.dataset)
+    print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
+        test_loss, test_acc, len(test_loader.dataset),
+        accuracy))
     return accuracy
 
 if __name__ == '__main__':
@@ -47,7 +56,7 @@ if __name__ == '__main__':
     model = LeNet5().to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    epochs = 30
+    epochs = 50
     best_acc = 0
     for epoch in range(1, epochs+1):
         train(model, train_dataloader, optimizer, epoch)
@@ -59,6 +68,6 @@ if __name__ == '__main__':
         if epoch == epochs:
             torch.save(model.state_dict(), './result/32bit_checkpoint.pth')
 
-        print(f'Epoch: {epoch}/{epochs}\t Best acc: {best_acc:.3f}%')
+        print(f'Epoch: {epoch}/{epochs}\t Best acc: {best_acc:.2f}% \n')
 
 

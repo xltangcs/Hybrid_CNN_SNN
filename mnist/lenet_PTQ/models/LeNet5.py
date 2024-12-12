@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-from torch.quantization import QuantStub, DeQuantStub
 
-class LeNet5_quant(nn.Module):
+
+class LeNet5(nn.Module):
     def __init__(self):
-        super(LeNet5_quant, self).__init__()
-        self.quant = QuantStub()
+        super(LeNet5, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1, padding=0)
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -18,11 +17,8 @@ class LeNet5_quant(nn.Module):
         self.relu4 = nn.ReLU()
         self.full5 = nn.Linear(84, 10)
         self.flatten = nn.Flatten()
-        self.dequant = DeQuantStub()
-
+        
     def forward(self, x):
-        x = self.quant(x)
-
         x = self.conv1(x)
         x = self.relu1(x)
         x = self.pool1(x)
@@ -35,6 +31,4 @@ class LeNet5_quant(nn.Module):
         x = self.full4(x)
         x = self.relu4(x)
         x = self.full5(x) 
-
-        x = self.dequant(x)
         return x
